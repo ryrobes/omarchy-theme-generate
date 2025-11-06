@@ -1,5 +1,4 @@
 #!/bin/bash
-#set -euo pipefail  ## for walker usage
 
 # Omarchy Theme Generator
 # Generates a theme from an input image using ImageMagick for color extraction
@@ -13,6 +12,7 @@
 #
 # Options:
 #   --walker                - Launch interactive UI to select image folder
+#   --refresh-cache         - Rebuild the walker folder cache (can combine with --walker)
 #   --help                  - Show this help message
 #
 # Environment Variables:
@@ -20,10 +20,114 @@
 #   OMARCHY_SET=0           - Set to 0 to skip running omarchy-theme-set after deployment (default: 1)
 
 # ============================================================================
+# Walker UI Mode - Cache Configuration
+# ============================================================================
+
+# Cache configuration
+CACHE_DIR="$HOME/.cache/omarchy"
+CACHE_FILE="$CACHE_DIR/walker-folders.cache"
+CACHE_MAX_AGE=3600  # 1 hour in seconds
+
+# Function to build/rebuild the folder cache
+build_folder_cache() {
+    mkdir -p "$CACHE_DIR"
+
+    echo "Scanning for image folders..."
+    notify-send "Omarchy Theme Generator" "Scanning for image folders..." -t 4000
+
+    # Create temporary file for atomic write
+    local temp_cache="$CACHE_FILE.tmp.$$"
+
+    # Write timestamp
+    echo "TIMESTAMP=$(date +%s)" > "$temp_cache"
+
+    # Find image files (non-hidden paths only), extract parent folders, unique them
+    # Use array to properly handle paths with spaces
+    mapfile -t FOLDERS < <(find ~ -maxdepth 3 -type f -not -path '*/\.*' \
+        -not -path '*/node_modules/*' \
+        -not -path '*/.cache/*' \
+        -not -path '*/venv/*' \
+        \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.webp" \) \
+        -exec dirname {} \; 2>/dev/null | sort -u)
+
+    # Build list with counts and write to cache
+    for folder in "${FOLDERS[@]}"; do
+        count=$(find "$folder" -maxdepth 1 -type f \
+            \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.webp" \) \
+            2>/dev/null | wc -l)
+        echo "$folder|$count" >> "$temp_cache"
+    done
+
+    # Atomic move to prevent corruption
+    mv "$temp_cache" "$CACHE_FILE"
+
+    echo "Cache updated with $(wc -l < "$CACHE_FILE" | xargs) entries"
+}
+
+# Function to check if cache is valid (exists and not expired)
+is_cache_valid() {
+    [[ ! -f "$CACHE_FILE" ]] && return 1
+
+    local cache_ts=$(head -1 "$CACHE_FILE" | cut -d= -f2)
+    local current_ts=$(date +%s)
+    local age=$((current_ts - cache_ts))
+
+    [[ $age -lt $CACHE_MAX_AGE ]]
+}
+
+# Function to get human-readable cache age
+get_cache_age() {
+    [[ ! -f "$CACHE_FILE" ]] && echo "no cache" && return
+
+    local cache_ts=$(head -1 "$CACHE_FILE" | cut -d= -f2)
+    local current_ts=$(date +%s)
+    local age=$((current_ts - cache_ts))
+
+    if [[ $age -lt 60 ]]; then
+        echo "${age}s ago"
+    elif [[ $age -lt 3600 ]]; then
+        echo "$((age / 60))m ago"
+    else
+        echo "$((age / 3600))h $((age % 3600 / 60))m ago"
+    fi
+}
+
+# Function to load folders from cache
+load_folders_from_cache() {
+    # Skip first line (timestamp), output folder|count pairs
+    tail -n +2 "$CACHE_FILE"
+}
+
+# ============================================================================
+# Refresh Cache Mode
+# ============================================================================
+
+# Check for --refresh-cache flag (can be combined with --walker)
+REFRESH_CACHE=0
+for arg in "$@"; do
+    if [[ "$arg" == "--refresh-cache" ]]; then
+        REFRESH_CACHE=1
+        break
+    fi
+done
+
+if [[ $REFRESH_CACHE -eq 1 ]]; then
+    build_folder_cache
+
+    # If only --refresh-cache was provided (not combined with --walker), exit
+    if [[ "${1:-}" == "--refresh-cache" ]] && [[ "${2:-}" != "--walker" ]]; then
+        echo ""
+        echo "Cache refreshed successfully!"
+        echo "Cache location: $CACHE_FILE"
+        exit 0
+    fi
+fi
+
+# ============================================================================
 # Walker UI Mode
 # ============================================================================
 
-if [[ "${1:-}" == "--walker" ]]; then
+if [[ "${1:-}" == "--walker" ]] || [[ "${2:-}" == "--walker" ]]; then
     # Check if walker is available
     if ! command -v walker >/dev/null 2>&1; then
         echo "Error: walker not found in PATH"
@@ -31,19 +135,29 @@ if [[ "${1:-}" == "--walker" ]]; then
         exit 1
     fi
 
-    echo "Scanning for image folders..."
-    notify-send "Omarchy Theme Generator" "Scanning for image folders..." -t 4000
+    # Check cache validity and rebuild if needed (skip if already refreshed)
+    if [[ $REFRESH_CACHE -eq 0 ]]; then
+        if is_cache_valid; then
+            CACHE_AGE=$(get_cache_age)
+            echo "Using cached folder list ($CACHE_AGE)"
+            notify-send "Omarchy Theme Generator" "Using cached folder list ($CACHE_AGE)" -t 2000
+        else
+            build_folder_cache
+        fi
+    fi
 
-    # Find image files (non-hidden paths only), extract parent folders, unique them
-    FOLDERS=$(find ~ -maxdepth 3 -type f -not -path '*/\.*' \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.webp" \) -exec dirname {} \; 2>/dev/null | sort -u)
+    # Load folders from cache
+    CACHED_DATA=$(load_folders_from_cache)
 
-    # Build list with counts and relative paths
+    # Build list with relative paths for display
     ITEMS=""
-    for folder in $FOLDERS; do
-        count=$(find "$folder" -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.webp" \) 2>/dev/null | wc -l)
+    FOLDERS=""
+    while IFS='|' read -r folder count; do
         rel_path=$(echo "$folder" | sed "s|^$HOME|~|")
         ITEMS="$ITEMS$count\t $rel_path ($count images)\n"
-    done
+        # Build FOLDERS list for random selection
+        FOLDERS="$FOLDERS$folder"$'\n'
+    done <<< "$CACHED_DATA"
 
     echo "Launching walker UI..."
 
@@ -93,6 +207,7 @@ Arguments:
 
 Options:
   --walker                  Launch interactive UI to select image folder
+  --refresh-cache           Rebuild the walker folder cache (can combine with --walker)
   --help, -h                Show this help message
 
 Environment Variables:
@@ -109,6 +224,12 @@ Examples:
 
   # Launch interactive folder picker
   omarchy-theme-generate --walker
+
+  # Refresh the folder cache and launch picker
+  omarchy-theme-generate --refresh-cache --walker
+
+  # Just refresh the cache (for faster subsequent --walker calls)
+  omarchy-theme-generate --refresh-cache
 
   # Generate without deploying or setting theme
   OMARCHY_DEPLOY=0 OMARCHY_SET=0 omarchy-theme-generate image.png test
