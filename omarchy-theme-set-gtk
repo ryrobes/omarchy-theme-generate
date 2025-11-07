@@ -400,6 +400,106 @@ menuitem:hover {
 .nautilus-canvas-item {
     color: @view_fg_color;
 }
+
+/* Thunar specific - comprehensive selectors */
+
+/* Thunar window - all toolbars and statusbars */
+window.thunar toolbar,
+window.thunar grid toolbar,
+window.thunar toolbar.horizontal,
+window.thunar #location-toolbar,
+.thunar toolbar,
+.thunar #location-toolbar,
+grid toolbar.horizontal,
+grid.horizontal toolbar {
+    background-color: @card_bg_color;
+    color: @foreground;
+    border: none;
+}
+
+window.thunar statusbar,
+.thunar statusbar,
+window.thunar grid statusbar {
+    background-color: @card_bg_color;
+    color: @foreground;
+    border-top: 1px solid @borders;
+}
+
+/* Generic toolbar/statusbar for any GTK app that might need it */
+toolbar,
+GtkToolbar {
+    background-color: @headerbar_bg_color;
+    color: @headerbar_fg_color;
+}
+
+statusbar {
+    background-color: @headerbar_bg_color;
+    color: @headerbar_fg_color;
+}
+
+/* Thunar message_area (location bar area) */
+.message_area,
+#message_area,
+window.thunar .message_area,
+window.thunar #message_area {
+    background-color: @card_bg_color;
+    color: @foreground;
+}
+
+/* Thunar sidebar */
+.thunar .sidebar,
+window.thunar .sidebar,
+window.thunar .shortcuts-pane {
+    background-color: @sidebar_bg_color;
+    color: @sidebar_fg_color;
+}
+
+/* Thunar main view */
+.thunar .standard-view,
+window.thunar .standard-view {
+    background-color: @view_bg_color;
+    color: @view_fg_color;
+}
+
+.thunar .standard-view:selected,
+window.thunar .standard-view:selected {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+/* Thunar containers */
+.thunar paned,
+window.thunar paned {
+    background-color: @background;
+}
+
+.thunar scrolledwindow,
+window.thunar scrolledwindow {
+    background-color: @view_bg_color;
+}
+
+/* Thunar path bar buttons */
+window.thunar toolbar button,
+.thunar toolbar button {
+    background-color: @card_bg_color;
+    color: @foreground;
+    border: none;
+}
+
+window.thunar toolbar button:hover,
+.thunar toolbar button:hover {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+}
+
+/* Thunar shortcuts/sidebar selection */
+window.thunar .shortcuts-pane row:selected,
+window.thunar .sidebar row:selected,
+.thunar .shortcuts-pane row:selected,
+.thunar .sidebar row:selected {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
 GTK_EOF
 }
 
