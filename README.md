@@ -1,6 +1,12 @@
-https://github.com/user-attachments/assets/9bce7d5f-ac21-4af9-86ea-561ba1654b30
+https://github.com/user-attachments/assets/ae94545f-1c08-48c5-8d09-4fce44346967
 
 ### Tested on a fresh Omarchy 3.1.5.
+
+```bash
+git clone https://github.com/ryrobes/omarchy-theme-generate.git
+cd omarchy-theme-generate
+./install.sh
+```
 
 ** Updates Hyprland, Zed, GTK3/4, VSCode, Obsidian, Kitty, Alacritty, Chromium, etc. **
 
