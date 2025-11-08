@@ -33,7 +33,7 @@ build_folder_cache() {
     mkdir -p "$CACHE_DIR"
 
     echo "Scanning for image folders..."
-    notify-send "Omarchy Theme Generator" "Scanning for image folders..." -t 4000
+    notify-send "Omarchy Theme Generator" "Scanning for image folders..." -t 6000
 
     # Create temporary file for atomic write
     local temp_cache="$CACHE_FILE.tmp.$$"
@@ -317,23 +317,86 @@ if [[ -d "$INPUT_IMAGE" ]]; then
         MAKO_BACKUP="$MAKO_CONFIG.tmp.$$"
         cp "$MAKO_CONFIG" "$MAKO_BACKUP"
 
+        # Get screen resolution dynamically
+        SCREEN_WIDTH=1920
+        SCREEN_HEIGHT=1080
+
+        # Try Hyprland first (get focused monitor)
+        if command -v hyprctl >/dev/null 2>&1; then
+            # Get focused monitor resolution from hyprctl
+            MONITOR_INFO=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused == true) | "\(.width) \(.height)"' 2>/dev/null)
+            if [[ -n "$MONITOR_INFO" ]]; then
+                read -r SCREEN_WIDTH SCREEN_HEIGHT <<< "$MONITOR_INFO"
+            fi
+        # Fallback to xrandr
+        elif command -v xrandr >/dev/null 2>&1; then
+            MONITOR_INFO=$(xrandr --current | grep ' connected primary' | head -1 | grep -oP '\d+x\d+' | head -1)
+            if [[ -n "$MONITOR_INFO" ]]; then
+                SCREEN_WIDTH=$(echo "$MONITOR_INFO" | cut -dx -f1)
+                SCREEN_HEIGHT=$(echo "$MONITOR_INFO" | cut -dx -f2)
+            fi
+        fi
+
+        # Get actual image dimensions for aspect ratio calculation
+        IMAGE_DIMS=$(magick identify -format "%w %h" "$INPUT_IMAGE" 2>/dev/null)
+        read -r IMG_WIDTH IMG_HEIGHT <<< "$IMAGE_DIMS"
+
+        # Calculate preview size based on image aspect ratio
+        # Start with 30% of screen width for better visibility
+        PREVIEW_WIDTH=$((SCREEN_WIDTH * 30 / 100))
+
+        # Calculate height to maintain aspect ratio
+        if [[ -n "$IMG_WIDTH" ]] && [[ -n "$IMG_HEIGHT" ]] && [[ $IMG_WIDTH -gt 0 ]]; then
+            # Calculate height based on image aspect ratio
+            PREVIEW_HEIGHT=$((PREVIEW_WIDTH * IMG_HEIGHT / IMG_WIDTH))
+
+            # Cap at 50% of screen height (allow taller previews)
+            MAX_HEIGHT=$((SCREEN_HEIGHT * 50 / 100))
+            if [[ $PREVIEW_HEIGHT -gt $MAX_HEIGHT ]]; then
+                PREVIEW_HEIGHT=$MAX_HEIGHT
+                # Recalculate width to maintain aspect ratio
+                PREVIEW_WIDTH=$((PREVIEW_HEIGHT * IMG_WIDTH / IMG_HEIGHT))
+            fi
+        else
+            # Fallback if magick identify fails
+            PREVIEW_HEIGHT=$((SCREEN_HEIGHT * 35 / 100))
+        fi
+
+        # max-icon-size should be LARGER than both dimensions to not constrain
+        # Use diagonal size to ensure it never limits the image
+        PREVIEW_ICON_SIZE=$(awk -v w="$PREVIEW_WIDTH" -v h="$PREVIEW_HEIGHT" 'BEGIN {
+            diagonal = sqrt(w*w + h*h)
+            printf "%.0f", diagonal * 1.1
+        }')
+
+        # Add padding buffer to width for mako's internal spacing/borders
+        # This prevents the image from overlapping the notification edge
+        PREVIEW_WIDTH=$((PREVIEW_WIDTH + 50))
+
+        # Ensure minimum sizes (for very small screens)
+        [[ $PREVIEW_WIDTH -lt 500 ]] && PREVIEW_WIDTH=500
+        [[ $PREVIEW_HEIGHT -lt 400 ]] && PREVIEW_HEIGHT=400
+        [[ $PREVIEW_ICON_SIZE -lt 600 ]] && PREVIEW_ICON_SIZE=600
+
         # Remove any old theme-preview rules to avoid accumulation
         sed -i '/^\[app-name=theme-preview\]/,/^$/d' "$MAKO_CONFIG"
 
-        # Add temporary rule for large preview
-        cat >> "$MAKO_CONFIG" << 'PREVIEW_RULE'
+        # Add temporary rule for large preview with dynamic sizing
+        cat >> "$MAKO_CONFIG" << EOF
 
 [app-name=theme-preview]
-max-icon-size=425
-height=300
-width=425
-PREVIEW_RULE
+max-icon-size=$PREVIEW_ICON_SIZE
+height=$PREVIEW_HEIGHT
+width=$PREVIEW_WIDTH
+border-size=4
+border-radius=8
+EOF
 
         # Reload mako to pick up changes
         makoctl reload 2>/dev/null
 
         # Show large preview notification
-        notify-send -a "theme-preview" " "  " " -i "$INPUT_IMAGE" -t 6500
+        notify-send -a "theme-preview" " "  " " -i "$INPUT_IMAGE" -t 8500
 
         # DON'T restore in background - wait for cleanup section at the end
         # This ensures proper theme colors are applied after generation
