@@ -11,7 +11,7 @@ cd omarchy-theme-generate
 
 Super-Space for the Omarchy menu, search for Theme Generator, choose a folder/image. Go. Will generate a 'dynamic' theme and swap to it.
 
-Submitted as a PR to core Omarchy here: https://github.com/basecamp/omarchy/pull/3210 - but can be installed on top in case they aren't insterested, will keep it up to date for each release in the meantime.
+Submitted as a PR to core Omarchy here: https://github.com/basecamp/omarchy/pull/3210 - but can be installed on top in case they aren't interested - will keep it up to date for each release in the meantime.
 
 > Updates Hyprland, *Zed*, *GTK3/4*, VSCode, Obsidian, Kitty, Alacritty, Chromium, etc.
 
