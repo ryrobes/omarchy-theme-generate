@@ -4,9 +4,12 @@ https://github.com/user-attachments/assets/ae94545f-1c08-48c5-8d09-4fce44346967
 
 ```bash
 git clone https://github.com/ryrobes/omarchy-theme-generate.git
+##or: gh repo clone ryrobes/omarchy-theme-generate
 cd omarchy-theme-generate
 ./install.sh
 ```
+
+Super-Space for the Omarchy menu, search for Theme Generator, choose a folder/image. Go. Will generate a 'dynamic' theme and swap to it.
 
 Submitted as a PR to core Omarchy here: https://github.com/basecamp/omarchy/pull/3210 - but can be installed on top in case they aren't insterested, will keep it up to date for each release in the meantime.
 
