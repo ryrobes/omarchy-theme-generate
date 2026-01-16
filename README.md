@@ -1,6 +1,8 @@
 https://github.com/user-attachments/assets/ae94545f-1c08-48c5-8d09-4fce44346967
 
-### Tested on a fresh Omarchy 3.1.6.
+### Compatible with Omarchy 3.3+
+
+Now generates `colors.toml` for Omarchy 3.3's template-based theming system. Also works with earlier versions.
 
 ```bash
 git clone https://github.com/ryrobes/omarchy-theme-generate.git
@@ -76,6 +78,7 @@ drwxr-xr-x     - ryanr  9 Nov 00:02   backgrounds
 .rw-r--r--   834 ryanr  9 Nov 00:02   alacritty.toml
 .rw-r--r--  1.7k ryanr  9 Nov 00:02   btop.theme
 .rw-r--r--     9 ryanr  9 Nov 00:02   chromium.theme
+.rw-r--r--   461 ryanr  9 Nov 00:02   colors.toml
 .rw-r--r--    50 ryanr  9 Nov 00:02   fonts.json
 .rw-r--r--   440 ryanr  9 Nov 00:02  󰡯 ghostty-theme
 .rwxr-xr-x   721 ryanr  9 Nov 00:02  󱁻 ghostty.conf

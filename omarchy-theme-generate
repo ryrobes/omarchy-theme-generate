@@ -961,7 +961,42 @@ echo "   - Magenta: $COLOR_MAGENTA → $COLOR_MAGENTA_BRIGHT"
 echo "   - Accents: $ACCENT_PRIMARY | $ACCENT_SECONDARY | $ACCENT_TERTIARY"
 
 # ============================================================================
-# STEP 5: Copy template files and replace colors
+# STEP 5: Generate colors.toml (Omarchy 3.3+ format)
+# ============================================================================
+
+echo ""
+echo " Generating colors.toml (Omarchy 3.3+ format)..."
+
+cat > "$TEMP_DIR/colors.toml" << COLORS_TOML_EOF
+accent = "$ACCENT_PRIMARY"
+cursor = "$ACCENT_PRIMARY"
+foreground = "$FG_COLOR"
+background = "$BG_COLOR"
+selection_foreground = "$SELECTION_FG"
+selection_background = "$SELECTION_BG"
+
+color0 = "$COLOR_BLACK"
+color1 = "$COLOR_RED"
+color2 = "$COLOR_GREEN"
+color3 = "$COLOR_YELLOW"
+color4 = "$COLOR_BLUE"
+color5 = "$COLOR_MAGENTA"
+color6 = "$COLOR_CYAN"
+color7 = "$COLOR_WHITE"
+color8 = "$COLOR_BLACK_BRIGHT"
+color9 = "$COLOR_RED_BRIGHT"
+color10 = "$COLOR_GREEN_BRIGHT"
+color11 = "$COLOR_YELLOW_BRIGHT"
+color12 = "$COLOR_BLUE_BRIGHT"
+color13 = "$COLOR_MAGENTA_BRIGHT"
+color14 = "$COLOR_CYAN_BRIGHT"
+color15 = "$FG_COLOR"
+COLORS_TOML_EOF
+
+echo "   colors.toml generated!"
+
+# ============================================================================
+# STEP 6: Copy template files and replace colors
 # ============================================================================
 
 echo ""
@@ -1470,6 +1505,40 @@ CHROME_B=$(( (BG_RGB[2] * 80 + ACCENT_RGB[2] * 20) / 100 ))
 
 echo "$CHROME_R,$CHROME_G,$CHROME_B" > "$TEMP_DIR/chromium.theme"
 
+# Generate slack.theme file (10 comma-separated hex colors)
+# Format: Column BG, Menu BG Hover, Active Item, Active Item Text, Hover Item,
+#         Text Color, Active Presence, Mention Badge, Top Nav BG, Top Nav Text
+echo "   Generating slack.theme..."
+
+# Calculate hover backgrounds (slightly lighter than base)
+SLACK_HOVER_BG=$(adjust_brightness "$BG_COLOR" 1.15)
+SLACK_MENU_HOVER=$(adjust_brightness "$BG_COLOR" 1.25)
+
+# Slack theme color mapping:
+# 1. Column BG - Sidebar background
+SLACK_COL_BG="$BG_COLOR"
+# 2. Menu BG Hover - Sidebar item hover state
+SLACK_MENU_BG_HOVER="$SLACK_MENU_HOVER"
+# 3. Active Item - Selected channel/DM background
+SLACK_ACTIVE_ITEM="$SELECTION_BG"
+# 4. Active Item Text - Selected channel text color
+SLACK_ACTIVE_TEXT="$ACCENT_PRIMARY"
+# 5. Hover Item - Channel hover background
+SLACK_HOVER_ITEM="$SLACK_HOVER_BG"
+# 6. Text Color - Primary sidebar text
+SLACK_TEXT="$FG_COLOR"
+# 7. Active Presence - Online status indicator (green dot)
+SLACK_PRESENCE="$COLOR_GREEN"
+# 8. Mention Badge - Unread mention badge color
+SLACK_BADGE="$COLOR_RED"
+# 9. Top Nav BG - Top navigation bar background
+SLACK_TOP_BG="$BG_COLOR"
+# 10. Top Nav Text - Top navigation text color
+SLACK_TOP_TEXT="$FG_COLOR"
+
+# Write comma-separated hex values (Slack's custom theme format)
+echo "$SLACK_COL_BG,$SLACK_MENU_BG_HOVER,$SLACK_ACTIVE_ITEM,$SLACK_ACTIVE_TEXT,$SLACK_HOVER_ITEM,$SLACK_TEXT,$SLACK_PRESENCE,$SLACK_BADGE,$SLACK_TOP_BG,$SLACK_TOP_TEXT" > "$TEMP_DIR/slack.theme"
+
 # Generate icons.theme file (select best matching Yaru color variant)
 echo "   Generating icons.theme..."
 # Extract RGB from ACCENT_PRIMARY and calculate hue
@@ -1519,7 +1588,7 @@ echo "$ICON_THEME" > "$TEMP_DIR/icons.theme"
 # through their existing Omarchy configuration.
 
 # ============================================================================
-# STEP 6: Atomically move temporary directory to final location
+# STEP 7: Atomically move temporary directory to final location
 # ============================================================================
 
 # Atomic move to prevent race conditions with active themes
@@ -1548,7 +1617,7 @@ if [[ "${OMARCHY_DEPLOY}" == "1" ]] && command -v omarchy-theme-set-vscode >/dev
 fi
 
 # ============================================================================
-# STEP 7: Optionally deploy and set theme in Omarchy
+# STEP 8: Optionally deploy and set theme in Omarchy
 # ============================================================================
 
 # If OMARCHY_SET is enabled and theme was deployed, activate the theme
@@ -1604,6 +1673,7 @@ echo " Theme generation complete!"
 echo ""
 echo " Output directory: $OUTPUT_DIR/"
 echo "  Wallpaper: $OUTPUT_DIR/backgrounds/wallpaper.webp"
+echo "  Slack Theme: $OUTPUT_DIR/slack.theme (paste into Slack → Preferences → Themes → Custom Theme)"
 echo ""
 echo " Color Palette Summary:"
 echo "   Background:    $BG_COLOR"
